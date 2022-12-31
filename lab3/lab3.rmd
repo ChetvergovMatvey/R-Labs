@@ -1,0 +1,100 @@
+---
+title: "Лабораторная работа 3"
+output: html_notebook
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+Четвергов Матвей, номер 27 (варианты 4, 13)
+
+_trades.RData_
+Файл содержит данные Евростата о импорте и экспорте товаров партнеров Евросоюза (значения указаны в Евро).
+
+### Задание 1.
+
+4. _trades.RData_ Объедините таблицы в одну, уберите столбец с территорией торговли, т.к. там только Евросоюз, оставим только строки с экспортом и импортом, вынесете данные по экспорту и импорту в отдельные переменные. Постройте линейный график изменения суммарных величин импорта и экспорта по импорту/экспорту продуктов питания, напитков и табака (у вас должно получиться 2 графика на одном изображении). Используйте цвет для разделения графиков. Добавьте текстовые подписи величин импорта и экспорта. Отрегулируйте местоположение и размер шрифта для подписей так, чтобы они не налезали на линии и не перекрывали друг друга, рисунок был максимально наглядным. Придумайте новые названия для графика и осей.
+```{r, warning=FALSE}
+install.packages("dplyr")
+install.packages("tidyr")
+install.packages("ggplot2")
+```
+
+```{r, warning=FALSE}
+library(dplyr, warn.conflicts = FALSE)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+load("C:/Users/79130/Desktop/trades.RData")
+
+tb <- trades |>
+    bind_rows() |> # объединим прочитанные таблицы в одну
+    select(-geo) |> # убираем столбец с территорией торговли, т.к. там только Евросоюз
+    dplyr::filter(str_detect(indic_et, "Exports in|Imports in")) |> # оставим только экспорт и импорт
+    pivot_wider(names_from = indic_et, values_from = values) |> # вынесем данные по экспорту и импорту в отдельные переменные
+    rename(
+        export = "Exports in million of ECU/EURO",
+        import = "Imports in million of ECU/EURO"
+    ) # дадим им краткие названия
+  
+trades_fdt <- tb |>
+    dplyr::filter(str_detect(sitc06, "Food, drinks and tobacco")) |>
+    group_by(time) |>
+    summarise(export = sum(export), import = sum(import))
+
+colors <- c("Export" = "green", "Import" = "orange")
+graphic <- ggplot(trades_fdt, aes(x = time))
+graphic <- graphic + geom_line(aes(y = export, color = "Export")) + geom_point(aes(y = export))
+graphic <- graphic + geom_line(aes(y = import, color = "Import")) + geom_point(aes(y = import))
+graphic <- graphic + geom_text(aes(y = export, label = export), nudge_x = -80, nudge_y = 700, size=2.5) + geom_text(aes(y = import, label = import),hjust = 0,nudge_x = 60,  nudge_y = -400, size=2.5)
+graphic <- graphic + labs(x = "Time", y = "Value", title = "Export Import FDT", color = "Legend") + scale_color_manual(values = colors)
+graphic <- graphic + theme(plot.title = element_text(hjust = 0.5))
+print(graphic)
+
+```
+
+
+
+### Задание 2.
+
+13. _data2.csv, data1.txt_ Объедините data.frames по идентификаторам сортов. Исключите те сорта, для которых есть пропущенные значения. Выбрать одну количественную и две качественные переменные . Разбить значения количественной переменной на группы в соответствии со значениями одной из качественных переменных. Нарисовать график, на котором отображены плотности распределений и гистограммы для получившихся групп, обозначить разные группы разными цветами.
+
+```{r, warning=FALSE}
+install.packages("hrbrthemes")
+install.packages("gridExtra")
+```
+
+```{r}
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+library(hrbrthemes)
+library(gridExtra)
+
+dataframe1 <- read.csv("C:/Users/79130/Desktop/data1.txt", sep=" ", skip=1)
+rownames(dataframe1) <- dataframe1$X1
+dataframe1 <- subset(dataframe1, select=-c(X1))
+
+dataframe2 <- read.csv("C:/Users/79130/Desktop/data2.csv", sep=',', header=FALSE)
+dataframe2 <- data.frame(t(dataframe2))
+names(dataframe2) <- dataframe2[1, ]
+dataframe2 <- dataframe2[-1, ]
+names(dataframe2)[1] = "Sample" 
+
+dataframe <- merge(dataframe1,dataframe2,by="Sample") %>% select(-c(Sample))
+dataframe 
+first <- dataframe %>% drop_na() %>% select(c(Height, MaturType, GrowthType)) %>% group_by(MaturType)
+second <-  dataframe %>% drop_na() %>% select(c(Height, MaturType, GrowthType))
+hist(first$Height)
+hist(second$Height)
+
+graphic1 <-first %>%
+ggplot( aes(x=Height, fill=MaturType)) +
+  geom_histogram( position = 'identity', binwidth=5, alpha=0.6) +
+  theme_ipsum() +
+  labs(fill="")
+graphic2 <- first %>%
+  ggplot(aes(x=Height, fill=MaturType)) +
+  geom_density(aes(Height))
+grid.arrange(graphic1, graphic2, nrow=2,top="Height value statistics for each MaturType")
+```
