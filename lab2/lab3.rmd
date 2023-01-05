@@ -1,0 +1,117 @@
+---
+title: "Лабораторная работа 2"
+output: html_notebook
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+Четвергов Матвей, номер 27 (варианты 27, 15)
+
+_trades.RData_
+Файл содержит данные Евростата о импорте и экспорте товаров партнеров Евросоюза (значения указаны в Евро).
+
+### Задание 1.
+
+27. Используйте файл Payment_and_value_of_Care-Hospital.csv
+На основе имеющихся данных создайте dataframe, агрегирующий информацию о количестве детских больниц в городах США. Dataframe должен содержать 5 колонок: название штата, название округа, название города, количество детских больниц в этом городе и количество детских больниц в которых осуществляется экстренная медицинская помощь.
+
+Отсутсвтует информация по больницам с экстренной помощью, в связи с этим, параметр количества больниц с экрстренной помощью не включён в итоговый dataframe. Исходный файл был найден без проблем с разделителями, данные всё те же.
+
+```{r}
+dataframeStart <- read.csv("C:/Users/79130/Desktop/Payment_and_Value_of_Care-Hospital.csv", sep = ',')
+
+#По идентификатору выберем детские больницы.
+child_hospital <- dataframeStart[0:0]
+for (i in 1:nrow(dataframeStart)) 
+{
+  if (grepl("CHILD", dataframeStart$Facility.Name[i]))
+  {
+    if(!(dataframeStart$Facility.ID[i] %in% child_hospital$Facility.ID))
+    {
+      child_hospital <- rbind(child_hospital, data[i, ])
+    }
+  }
+}
+#Число больниц в городе.
+hospital_number <- as.data.frame(table(child_hospital$City))
+
+#Создаём требующийся dataframe.
+dataframeFinal <- data.frame("State" = character(), "County Name" = character(), "City" = character(), "Number of hospitals" = character())
+
+for (i in 1:nrow(child_hospital)) 
+{
+  if (!(child_hospital[["City"]][i] %in% dataframeFinal[["City"]]))
+  {
+    dataframeCurrent <- data.frame(child_hospital[["State"]][i], child_hospital[["County.Name"]][i], child_hospital[["City"]][i], hospital_number[ hospital_number$Var1 == child_hospital[["City"]][i], 2]) 
+    names(dataframeCurrent) <- c("State", "County Name", "City", "Number of hospitals")
+    dataframeFinal <- rbind(dataframeFinal, dataframeCurrent)
+  }
+}
+
+dataframeFinal[1:15, ]
+```
+
+### Задание 2.
+
+15. Используйте файл outcome-of-care-measures.csv
+Напишите функцию, которая принимает на вход название штата и выдает на выход список, который содержит количество больниц в штате и среднее количество людей умерших и вернувшихся в больницу в течение 30 дней, для каждого из трех заболеваний.
+
+```{r}
+mean_patients <- function(state) {
+  path = "C:/Users/79130/Desktop/outcome-of-care-measures.csv"
+  data <- read.csv(path, colClasses = "character")
+  state <-data[which(data$State == state),]
+  
+  hospitals_number <- length(unique(state$Hospital.Name))
+  
+  #Heart attack
+  heart_attack_mortality <- state[,"Number.of.Patients...Hospital.30.Day.Death..Mortality..Rates.from.Heart.Attack"]
+  heart_attack_mortality <- lapply(heart_attack_mortality, function(x) gsub("[^0-9.-]", NA, x))
+  heart_attack_mortality <- lapply(heart_attack_mortality, function(x) as.numeric(x))
+  heart_attack_mortality <- heart_attack_mortality[!is.na(heart_attack_mortality)]
+  heart_attack_mortality_mean <- mean(unlist(heart_attack_mortality), na.rm=TRUE)
+  
+  heart_attack_readmission <- state[,"Number.of.Patients...Hospital.30.Day.Readmission.Rates.from.Heart.Attack"]
+  heart_attack_readmission <- lapply(heart_attack_readmission, function(x) gsub("[^0-9.-]", NA, x))
+  heart_attack_readmission <- lapply(heart_attack_readmission, function(x) as.numeric(x))
+  heart_attack_readmission <- heart_attack_readmission[!is.na(heart_attack_readmission)]
+  heart_attack_readmission_mean <- mean(unlist(heart_attack_readmission), na.rm=TRUE)
+  
+  #Heart_failure
+  heart_failure_mortality <- state[,"Number.of.Patients...Hospital.30.Day.Death..Mortality..Rates.from.Heart.Failure"]
+  heart_failure_mortality <- lapply(heart_failure_mortality, function(x) gsub("[^0-9.-]", NA, x))
+  heart_failure_mortality <- lapply(heart_failure_mortality, function(x) as.numeric(x))
+  heart_failure_mortality <- heart_failure_mortality[!is.na(heart_failure_mortality)]
+  heart_failure_mortality_mean <- mean(unlist(heart_failure_mortality), na.rm=TRUE)
+  
+  
+  heart_failure_readmission <- state[,"Number.of.Patients...Hospital.30.Day.Readmission.Rates.from.Heart.Failure"]
+  heart_failure_readmission <- lapply(heart_failure_readmission, function(x) gsub("[^0-9.-]", NA, x))
+  heart_failure_readmission <- lapply(heart_failure_readmission, function(x) as.numeric(x))
+  heart_failure_readmission <- heart_failure_readmission[!is.na(heart_failure_readmission)]
+  heart_failure_readmission_mean <- mean(unlist(heart_failure_readmission), na.rm=TRUE)
+  
+  #Pneumonia
+  pneumonia_mortality <-state[,"Number.of.Patients...Hospital.30.Day.Death..Mortality..Rates.from.Pneumonia",]
+  pneumonia_mortality <- lapply(pneumonia_mortality, function(x) gsub("[^0-9.-]", NA, x))
+  pneumonia_mortality <- lapply(pneumonia_mortality, function(x) as.numeric(x))
+  pneumonia_mortality <- pneumonia_mortality[!is.na(pneumonia_mortality)]
+  pneumonia_mortality_mean <- mean(unlist(pneumonia_mortality), na.rm=TRUE)
+  
+  
+  pneumonia_readmission <-state[,"Number.of.Patients...Hospital.30.Day.Readmission.Rates.from.Pneumonia",]
+  pneumonia_readmission <- lapply(pneumonia_readmission, function(x) gsub("[^0-9.-]", NA, x))
+  pneumonia_readmission <- lapply(pneumonia_readmission, function(x) as.numeric(x))
+  pneumonia_readmission <- pneumonia_readmission[!is.na(pneumonia_readmission)]
+  pneumonia_readmission_mean <- mean(unlist(pneumonia_readmission), na.rm=TRUE)
+  
+  values <- list(hospitals_number, heart_attack_mortality_mean, heart_attack_readmission_mean, heart_failure_mortality_mean,heart_failure_readmission_mean,pneumonia_mortality_mean,pneumonia_readmission_mean)
+  names(values) <- c("Number of hospitals", "Heart Attack Mortality mean", "Heart Attack Readmission mean", "Heart Failure Mortality mean", "Heart Failure Readmission mean", "Pneumonia Mortality mean", "Pneumonia Readmission mean")
+  return(values)
+}
+
+state <- "CA"
+mean_patients(state)
+
+```
